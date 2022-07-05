@@ -8,6 +8,11 @@
 library(Matrix)
 library(magrittr)
 library(UpSetR)
+library(ggplot2)
+library(ggVennDiagram)
+library(grid)
+library(ggrepel)
+library(gplots)
 
 ######################### declare functions
 keepTEs_function <- function(fullmat) {
@@ -19,7 +24,8 @@ keepTEs_function <- function(fullmat) {
 }
 
 ######################### read in data
-sample.name = "10k_PBMC_3p_nextgem_Chromium_X"
+#sample.name = "10k_PBMC_3p_nextgem_Chromium_X"
+sample.name = "20k_PBMC_3p_HT_nextgem_Chromium_X"
 
 # these matrices have the full features dataset
 file.path("data", "counts_matrix_R", sample.name, paste0(sample.name, "_pseudobulk_matrix_counts_exclude.Rds")) %>%
@@ -46,55 +52,124 @@ if(sum(rownames(pseudobulk) != rownames(individual) | rownames(pseudobulk) != ro
   stop("The matrices don't have the same TEs")
 }
 
-c(rownames(pseudobulk), rownames(individual), rownames(clusters)) %>%
-  unique() %>% length()
+#c(rownames(pseudobulk), rownames(individual), rownames(clusters)) %>%
+#  unique() %>% length()
 
 TEs.universe <- rownames(pseudobulk)
-
+################################################################################
 ##### plot counts distribution 
-rowsums_all <- list(rowSums(pseudobulk),
-                   rowSums(individual),
-                   rowSums(clusters))
-names(rowsums_all) <- c("Pseudobulk", "Cell-by-Cell", "By-Cluster")
 
-png(file.path("results", sample.name, paste0(sample.name, "_readcounts_sum_boxplot.png")), 
-    width = 15, height = 9, units = "in", res = 300)
-par(mar = c(4, 8, 4, 2))
-boxplot(rowsums_all, outline=FALSE, horizontal = TRUE, notch = TRUE, las = 1,
-        xlab = "Sum of read counts by feature",
-        main = paste0("Counts by feature distribution ", sample.name))
+te.counts.sum <- rbind(data.frame(stellarscope.method="Pseudobulk", te.counts.sum=rowSums(pseudobulk), element.name=names(rowSums(pseudobulk))),
+                       data.frame(stellarscope.method="Cell-by-Cell", te.counts.sum=rowSums(individual), element.name=names(rowSums(individual))),
+                       data.frame(stellarscope.method="By-Cluster", te.counts.sum=rowSums(clusters), element.name=names(rowSums(clusters)))
+                       )
+rownames(te.counts.sum) <- NULL
+
+png(file.path("results", sample.name, paste0(sample.name, "_jitter_rowsums.png")),
+   width = 17, height = 10, units = "in", res=300)
+# png(file.path("results", sample.name, paste0(sample.name, "_jitter_rowsums_subset.png")),
+#     width = 17, height = 10, units = "in", res=300)
+
+ggplot(te.counts.sum, aes(x=stellarscope.method, y=te.counts.sum)) + 
+  geom_violin() + geom_jitter(position = position_jitter(seed = 1)) + theme_minimal() +
+  geom_text_repel(aes(label=ifelse(te.counts.sum>11000, as.character(element.name),''), fontface="bold"),
+           position = position_jitter(seed = 1), color="blue") +
+  # geom_text_repel(aes(label=ifelse(te.counts.sum>4700, as.character(element.name),''), fontface="bold"), 
+  #                 position = position_jitter(seed = 1), color="blue") +
+    ggtitle(sample.name) + xlab("\nStellarscope Method") + ylab("Sum of TE counts (across all cells)\n") +
+  theme(axis.text=element_text(size=14), axis.title=element_text(size=14))
+  #+ ylim(0,5000)
+  
 dev.off()
 
-rm(rowsums_all)
-######################### get TEs in the different matrices
+rm(te.counts.sum)
+# rowsums_all <- list(rowSums(pseudobulk),
+#                    rowSums(individual),
+#                    rowSums(clusters))
+# names(rowsums_all) <- c("Pseudobulk", "Cell-by-Cell", "By-Cluster")
+
+# png(file.path("results", sample.name, paste0(sample.name, "_readcounts_sum_boxplot.png")), 
+#     width = 15, height = 9, units = "in", res = 300)
+# par(mar = c(4, 8, 4, 2))
+# boxplot(rowsums_all, outline=FALSE, horizontal = TRUE, notch = TRUE, las = 1,
+#         xlab = "Sum of read counts by feature",
+#         main = paste0("Counts by feature distribution ", sample.name))
+# dev.off()
+# 
+# rm(rowsums_all)
+################################################################################
+###### get TEs in the different matrices
 which(rowSums(pseudobulk)>0) %>% names() -> nonzero.TEs.pseudobulk
 which(rowSums(individual)>0) %>% names() -> nonzero.TEs.individual
 which(rowSums(clusters)>0) %>% names() -> nonzero.TEs.clusters
 
-TEs.sets <- list(TEs.universe, nonzero.TEs.pseudobulk, nonzero.TEs.individual, nonzero.TEs.clusters)
-names(TEs.sets) <- c("TE annotation", "Pseudobulk", "Cell-by-Cell", "By-Cluster")
+TE.sets <- list(TEs.universe, nonzero.TEs.individual, nonzero.TEs.pseudobulk, nonzero.TEs.clusters)
+names(TE.sets) <- c("annotation",  "Cell-by-Cell", "Pseudobulk", "By-Cluster")
 
 rm(TEs.universe, nonzero.TEs.pseudobulk, nonzero.TEs.individual, nonzero.TEs.clusters)
 
-##### plot upset
+##### plot venn diagram
+# png(file.path("results", sample.name, paste0(sample.name, "_venn_annotation.png")),
+#     width = 16, height = 10, units = "in", res=300)
+# ggVennDiagram(TE.sets) + labs(title=sample.name, subtitle = "Number of detected TE transcripts",
+#                               caption = Sys.Date())
+# dev.off()
 
-png(file.path("results", sample.name, paste0(sample.name, "_upsetr_all.png")),
+##### plot upset
+png(file.path("results", sample.name, paste0(sample.name, "_upsetr_annotation.png")),
     width = 16, height = 10, units = "in", res=300)
 
-upset(fromList(TEs.sets[2:4]), order.by = "freq", point.size = 3.5,
-      mainbar.y.label = "Detected Transposable Elements", main.bar.color = "cornflowerblue",
-      sets.x.label = "Total TEs (set size)", sets.bar.color = "cornflowerblue",
+upset(fromList(TE.sets),
+      order.by = c("degree"), point.size = 3.5, 
+      matrix.color = "black", main.bar.color = c(rep("grey25",7), "steelblue"),
+      mainbar.y.label = "Detected Transposable Elements",  
+      sets.x.label = "Total TEs (set size)", sets.bar.color = c("steelblue","maroon","#93af8b","orange"),
       text.scale = c(2, 1.35, 1.35, 1.25, 1.65, 1.95)
-      )
+      ) 
+grid.text(sample.name,x = 0.65, y=0.95, gp=gpar(fontsize=20))
 
 dev.off()
 
+##### plot venn diagram
+png(file.path("results", sample.name, paste0(sample.name, "_venn_methods.png")),
+    width = 16, height = 10, units = "in", res=300)
 
-# which are the intersections (save the table)
+ggVennDiagram(TE.sets[c("Pseudobulk", "Cell-by-Cell", "By-Cluster")]) + 
+  labs(title=sample.name, subtitle = "Number of detected TE transcripts", caption = Sys.Date()) +
+  scale_fill_gradient(low = "#F4FAFE", high = "#4981BF")
 
-rm(TEs.sets)
+dev.off()
+
+##### which are the intersections (save the table)
+vdata <- venn(TE.sets[c("Pseudobulk", "Cell-by-Cell", "By-Cluster")], show.plot = FALSE)
+te.intersections <- attr(x = vdata, "intersections")
+
+te.intersections <- do.call(rbind, lapply(names(te.intersections), function(x){
+  data.frame(x, te.intersections[[x]])
+  }))
+colnames(te.intersections) <- c("set", "TE")
+te.intersections$set <- gsub(pattern = "-", replacement = "", te.intersections$set)
+
+te.intersections <- data.frame(te.intersections,
+                               rowsums.pseudobulk=rowSums(pseudobulk)[te.intersections$TE],
+                               rowsums.cellbycell=rowSums(individual)[te.intersections$TE],
+                               rowsums.bycluster=rowSums(clusters)[te.intersections$TE]
+)
+
+cells.pseudobulk = unlist(lapply(te.intersections$TE, function(x) { sum(pseudobulk[x, ] != 0) }))
+cells.individual = unlist(lapply(te.intersections$TE, function(x) { sum(individual[x, ] != 0) }))
+cells.clusters = unlist(lapply(te.intersections$TE, function(x) { sum(clusters[x, ] != 0) }))
+
+te.intersections <- data.frame(te.intersections, cells.pseudobulk, cells.individual, cells.clusters)
+
+te.intersections <- data.frame(te.intersections, sample.name)
+
+write.csv(x = te.intersections,
+          file = file.path("results", sample.name, paste0(sample.name, "_te_intersections_sets.csv")),
+          quote = FALSE, row.names = FALSE)
+
+rm(TE.sets, vdata, cells.pseudobulk, cells.individual, cells.clusters)#, te.intersections)
 ###############################################################################
-
 # differentiate cell barcodes from each matrix because we'll merge them
 colnames(pseudobulk) %<>% paste0("_pse")
 colnames(individual) %<>% paste0("_ind") 
@@ -102,45 +177,35 @@ colnames(clusters) %<>% paste0("_clu")
 
 # bind them
 all <- cbind(pseudobulk, individual, clusters)
-
+# remove rows (TEs) that have zero counts in all the cells in all the matrices
 all <- all[rowSums(all) > 0, ]
 
-# plot differences
 
-ind.pse.diff <- all[, grepl("_ind$", colnames(all)) ] - all[, grepl("_pse$", colnames(all)) ]
+##### plot differences
+
+pse.ind.diff <- all[, grepl("_pse$", colnames(all)) ] - all[, grepl("_ind$", colnames(all)) ]
 
 pse.clu.diff <- all[, grepl("_pse$", colnames(all)) ] - all[, grepl("_clu$", colnames(all)) ]
 
 ind.clu.diff <- all[, grepl("_ind$", colnames(all)) ] - all[, grepl("_clu$", colnames(all)) ]
 
 
+as.matrix(ind.clu.diff) %>% table() -> ind.clu.table
 
-#table(as.matrix(ind.clu.diff))
-
-table(ind.clu.diff)
 
 ######## this needs to be a function
-png(paste0("barplot_subtraction_", s, ".png"), width = 28, height = 11, units = "in", res=300)
+png(file.path("results", sample.name, paste0(sample.name, "_barplot_IND_CLU.png")),
+    width = 30, height = 10, units = "in", res=300)
 
-barplot(subtraction, las=1,
-        main = paste("Difference in Read Count between Cell-by-Cell and Pseudobulk\n",sample.name, "matrices", size),
+barplot(ind.clu.table[names(ind.clu.table) != "0"], las=1,
+        main = paste0("Difference in Read Count between Cell-by-Cell and By-Cluster (",sample.name, ")"),
         xlab = "subtraction value (number of elements)", 
         ylab = "",
-        names.arg = paste0(names(te.diff), "\n(", prettyNum(te.diff, big.mark=","), ")"))
-#ylab = paste0("Transposable Elements  (total=", length(te.diff),")"))
-
-# PBMC_500
-#abline(h = seq(500,6500, 500), lty=2, col="grey79")
-
-# PBMC_10k and PBMC_20k
-#abline(h = seq(500,10000, 500), lty=2, col="grey79")
-#axis(side = 2, at = seq(0,10000,1000), las=1)
+        names.arg = paste0(names(ind.clu.table[names(ind.clu.table) != "0"]),
+                           "\n(", prettyNum(ind.clu.table[names(ind.clu.table) != "0"], big.mark=","), ")")
+        )
 
 dev.off()
-
-
-
-
 
 
 
