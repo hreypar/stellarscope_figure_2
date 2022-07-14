@@ -182,30 +182,39 @@ all <- all[rowSums(all) > 0, ]
 
 
 ##### plot differences
+ind.pse.diff <- all[, grepl("_ind$", colnames(all)) ] - all[, grepl("_pse$", colnames(all)) ]
+as.matrix(ind.pse.diff) %>% table() -> ind.pse.table
+bplot_subtraction(a="individual", b = "pseudobulk", values = ind.pse.table)
 
-pse.ind.diff <- all[, grepl("_pse$", colnames(all)) ] - all[, grepl("_ind$", colnames(all)) ]
-
+#
 pse.clu.diff <- all[, grepl("_pse$", colnames(all)) ] - all[, grepl("_clu$", colnames(all)) ]
+as.matrix(pse.clu.diff) %>% table() -> pse.clu.table
+bplot_subtraction(a="pseudobulk", b = "celltype", values = pse.clu.table)
 
+#
 ind.clu.diff <- all[, grepl("_ind$", colnames(all)) ] - all[, grepl("_clu$", colnames(all)) ]
-
-
 as.matrix(ind.clu.diff) %>% table() -> ind.clu.table
+bplot_subtraction(a="individual", b = "celltype", values = ind.clu.table)
+
+
+
 
 
 ######## this needs to be a function
-png(file.path("results", sample.name, paste0(sample.name, "_barplot_IND_CLU.png")),
+bplot_subtraction <- function(a, b, values) {
+
+png(file.path("results", sample.name, paste0(sample.name, "_barplot_", a, "_", b, ".png")),
     width = 30, height = 10, units = "in", res=300)
 
-barplot(ind.clu.table[names(ind.clu.table) != "0"], las=1,
-        main = paste0("Difference in Read Count between Cell-by-Cell and By-Cluster (",sample.name, ")"),
+barplot(values[names(values) != "0"], las=1,
+        main = paste0("Difference in Read Count between ", a, " and ", b, " (", sample.name, ")"),
         xlab = "subtraction value (number of elements)", 
         ylab = "",
-        names.arg = paste0(names(ind.clu.table[names(ind.clu.table) != "0"]),
-                           "\n(", prettyNum(ind.clu.table[names(ind.clu.table) != "0"], big.mark=","), ")")
+        names.arg = paste0(names(values[names(values) != "0"]),
+                           "\n(", prettyNum(values[names(values) != "0"], big.mark=","), ")")
         )
 
 dev.off()
 
-
+}
 
