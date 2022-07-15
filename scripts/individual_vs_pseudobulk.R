@@ -16,21 +16,21 @@
 #library(grid)
 #library(ggrepel)
 #library(gplots)
-library(Seurat)
+#library(Seurat)
 
 ######################### declare functions
+# function to 
+
 
 ######################### read in data
 #sample.name = "10k_PBMC_3p_nextgem_Chromium_X"
-sample.name = "20k_PBMC_3p_HT_nextgem_Chromium_X"
+#sample.name = "20k_PBMC_3p_HT_nextgem_Chromium_X"
 
 # these matrices have the full features dataset
-file.path("data", "counts_matrix_R", sample.name, paste0(sample.name, "_pseudobulk_matrix_counts_exclude.Rds")) %>%
+file.path("data", "seurat_raw", sample.name, paste0(sample.name, "_pseudobulk_seurat_qc_raw_exclude.Rds")) %>%
   readRDS() -> pseudobulk
 
-file.path("data", "counts_matrix_R", sample.name, paste0(sample.name, "_individual_matrix_counts_exclude.Rds")) %>%
+file.path("data", "seurat_raw", sample.name, paste0(sample.name, "_pseudobulk_seurat_qc_raw_exclude.Rds")) %>%
   readRDS() -> individual
 
 ######################### keep only TE features
-
-
