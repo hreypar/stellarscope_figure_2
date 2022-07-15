@@ -27,6 +27,11 @@ keepTEs_function <- function(fullmat) {
 #sample.name = "10k_PBMC_3p_nextgem_Chromium_X"
 sample.name = "20k_PBMC_3p_HT_nextgem_Chromium_X"
 
+##############
+##############
+############## ATTENTION, THE DIR STRUCTURE OF INPUT DATA HAS CHANGED
+##############
+##############
 # these matrices have the full features dataset
 file.path("data", "counts_matrix_R", sample.name, paste0(sample.name, "_pseudobulk_matrix_counts_exclude.Rds")) %>%
   readRDS() -> pseudobulk
