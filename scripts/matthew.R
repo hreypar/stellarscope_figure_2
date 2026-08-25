@@ -91,6 +91,27 @@ stopifnot(all(rownames(mat.pseudo) == rownames(mat.indiv)))
 # Remove genes
 
 diff.pseudo.indiv <- mat.pseudo - mat.indiv
+
+# png(file.path("results", "barplot_individual_pseudobulk_difference.png"),
+#     width = 15, height = 11, units = "in", res=300)
+
+diffs <- diff.pseudo.indiv
+o <- ''
+par(oma=c(3,6,3,3))
+barplot(diffs[!names(diffs) %in% o], horiz = TRUE, las=1, border="grey", col = "cornflowerblue", 
+        xlim = c(0,250), space = 1, xaxt="n", 
+        main = paste("Individual - Pseudobulk\n", sample.name),
+        names.arg = paste0(names(diffs[!names(diffs) %in% o]),
+                           "  (n=", prettyNum(diffs[!names(diffs) %in% o], big.mark=","), ")")
+)
+axis(side = 1, at = seq(0,250,25))
+lapply(seq(0,250,10), function(y) {
+  abline(v = y, lty=2, lwd=0.5, col="grey")
+})
+
+dev.off()
+
+
 library(Matrix)
 # this rowSums gives length of 27,812, but should be 88,461
 # z <- rowSums(diff.pseudo.indiv)
